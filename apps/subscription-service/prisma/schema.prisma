@@ -1,0 +1,123 @@
+// This is your Prisma schema file for the Subscription Service
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/subscription-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  name         String   @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp()
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp()
+
+  subscriptions Subscription[]
+
+  @@index([email], name: "idx_users_email")
+  @@index([createdAt], name: "idx_users_created_at")
+  @@map("users")
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model Plan {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @unique @db.VarChar(100)
+  description String?      @db.Text
+  price       Decimal      @db.Decimal(10, 2)
+  billingCycle BillingCycle @map("billing_cycle")
+  features    Json?        @db.JsonB
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamp()
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamp()
+
+  subscriptions        Subscription[] @relation("PlanSubscriptions")
+  previousSubscriptions Subscription[] @relation("PreviousPlanSubscriptions")
+
+  @@index([isActive], name: "idx_plans_is_active")
+  @@index([name], name: "idx_plans_name")
+  @@map("plans")
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+model Subscription {
+  id               String             @id @default(uuid()) @db.Uuid
+  userId           String             @map("user_id") @db.Uuid
+  planId           String             @map("plan_id") @db.Uuid
+  status           SubscriptionStatus
+  startDate        DateTime           @map("start_date") @db.Timestamp()
+  endDate          DateTime?          @map("end_date") @db.Timestamp()
+  paymentGatewayId String?            @unique @map("payment_gateway_id") @db.VarChar(255)
+  previousPlanId   String?            @map("previous_plan_id") @db.Uuid
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamp()
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamp()
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         Plan            @relation("PlanSubscriptions", fields: [planId], references: [id], onDelete: Restrict)
+  previousPlan Plan?           @relation("PreviousPlanSubscriptions", fields: [previousPlanId], references: [id], onDelete: SetNull)
+  paymentRecords PaymentRecord[]
+
+  @@index([userId], name: "idx_subscriptions_user_id")
+  @@index([status], name: "idx_subscriptions_status")
+  @@index([startDate], name: "idx_subscriptions_start_date")
+  @@index([paymentGatewayId], name: "idx_subscriptions_payment_gateway_id")
+  @@map("subscriptions")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model PaymentRecord {
+  id               String        @id @default(uuid()) @db.Uuid
+  subscriptionId   String        @map("subscription_id") @db.Uuid
+  amount           Decimal       @db.Decimal(10, 2)
+  currency         String        @default("USD") @db.VarChar(3)
+  status           PaymentStatus
+  paymentGatewayId String        @unique @map("payment_gateway_id") @db.VarChar(255)
+  failureReason    String?       @map("failure_reason") @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamp()
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamp()
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId], name: "idx_payment_records_subscription_id")
+  @@index([paymentGatewayId], name: "idx_payment_records_payment_gateway_id")
+  @@index([status], name: "idx_payment_records_status")
+  @@map("payment_records")
+}
+
+model IdempotencyKey {
+  id              String   @id @default(uuid()) @db.Uuid
+  idempotencyKey  String   @unique @map("idempotency_key") @db.VarChar(255)
+  requestMethod   String   @map("request_method") @db.VarChar(10)
+  requestPath     String   @map("request_path") @db.VarChar(500)
+  requestBodyHash String   @map("request_body_hash") @db.VarChar(64)
+  responseStatus  Int?     @map("response_status")
+  responseBody    Json?    @map("response_body") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp()
+  expiresAt       DateTime @map("expires_at") @db.Timestamp()
+
+  @@index([idempotencyKey], name: "idx_idempotency_keys_key")
+  @@index([expiresAt], name: "idx_idempotency_keys_expires_at")
+  @@map("idempotency_keys")
+}

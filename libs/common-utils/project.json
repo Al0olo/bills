@@ -1,0 +1,19 @@
+{
+  "name": "common-utils",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/common-utils/src",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:shared"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/common-utils",
+        "main": "libs/common-utils/src/index.ts",
+        "tsConfig": "libs/common-utils/tsconfig.lib.json",
+        "assets": ["libs/common-utils/*.md"]
+      }
+    }
+  }
+}

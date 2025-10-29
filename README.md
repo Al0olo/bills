@@ -75,10 +75,10 @@ Comprehensive design documentation is available in the [`docs/`](./docs) directo
 
 ### Prerequisites
 
-- Node.js 18+ 
-- pnpm 8+
+- Node.js 20+ 
+- pnpm 10+
 - Docker & Docker Compose
-- Git
+- PostgreSQL 15+ (for local development)
 
 ### Installation
 
@@ -93,14 +93,31 @@ pnpm install
 # Set up environment variables
 cp .env.example .env
 
+# Generate Prisma clients
+pnpm prisma:generate
+
 # Start all services with Docker
-docker-compose up -d
+pnpm docker:up
+```
 
-# Run database migrations
-pnpm prisma:migrate
+### Local Development (Without Docker)
 
-# Seed the database
-pnpm seed
+```bash
+# Start PostgreSQL locally
+docker run -d --name bills-postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 postgres:15-alpine
+
+# Create databases
+psql -U postgres -h localhost -c "CREATE DATABASE subscriptions;"
+psql -U postgres -h localhost -c "CREATE DATABASE payments;"
+
+# Run migrations
+pnpm prisma:migrate:subscription
+pnpm prisma:migrate:payment
+
+# Start services
+pnpm start:all
 ```
 
 ### Accessing the Services

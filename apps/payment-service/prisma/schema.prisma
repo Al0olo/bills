@@ -1,0 +1,53 @@
+// This is your Prisma schema file for the Payment Service
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/payment-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model PaymentTransaction {
+  id                  String        @id @default(uuid()) @db.Uuid
+  externalReference   String        @unique @map("external_reference") @db.VarChar(255)
+  amount              Decimal       @db.Decimal(10, 2)
+  currency            String        @default("USD") @db.VarChar(3)
+  status              PaymentStatus
+  webhookSent         Boolean       @default(false) @map("webhook_sent")
+  webhookRetryCount   Int           @default(0) @map("webhook_retry_count")
+  webhookLastAttempt  DateTime?     @map("webhook_last_attempt") @db.Timestamp()
+  metadata            Json?         @db.JsonB
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamp()
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamp()
+
+  @@index([externalReference], name: "idx_payment_transactions_external_ref")
+  @@index([status], name: "idx_payment_transactions_status")
+  @@index([webhookSent], name: "idx_payment_transactions_webhook_sent")
+  @@map("payment_transactions")
+}
+
+model IdempotencyKey {
+  id              String   @id @default(uuid()) @db.Uuid
+  idempotencyKey  String   @unique @map("idempotency_key") @db.VarChar(255)
+  requestMethod   String   @map("request_method") @db.VarChar(10)
+  requestPath     String   @map("request_path") @db.VarChar(500)
+  requestBodyHash String   @map("request_body_hash") @db.VarChar(64)
+  responseStatus  Int?     @map("response_status")
+  responseBody    Json?    @map("response_body") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp()
+  expiresAt       DateTime @map("expires_at") @db.Timestamp()
+
+  @@index([idempotencyKey], name: "idx_idempotency_keys_key")
+  @@index([expiresAt], name: "idx_idempotency_keys_expires_at")
+  @@map("idempotency_keys")
+}

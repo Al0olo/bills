@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bills-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - bills-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Subscription Service
+  subscription-service:
+    build:
+      context: .
+      dockerfile: docker/subscription.Dockerfile
+    container_name: bills-subscription-service
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/subscriptions
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      PAYMENT_SERVICE_URL: http://payment-service:3001
+      PAYMENT_SERVICE_API_KEY: ${PAYMENT_SERVICE_API_KEY:-service_key_payment_dev}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-dev-webhook-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bills-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Payment Service
+  payment-service:
+    build:
+      context: .
+      dockerfile: docker/payment.Dockerfile
+    container_name: bills-payment-service
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/payments
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3000
+      SUBSCRIPTION_WEBHOOK_URL: http://subscription-service:3000/v1/webhooks/payment
+      SUBSCRIPTION_SERVICE_API_KEY: ${SUBSCRIPTION_SERVICE_API_KEY:-service_key_subscription_dev}
+      PAYMENT_SUCCESS_RATE: ${PAYMENT_SUCCESS_RATE:-0.9}
+      WEBHOOK_RETRY_MAX_ATTEMPTS: ${WEBHOOK_RETRY_MAX_ATTEMPTS:-6}
+      WEBHOOK_TIMEOUT_MS: ${WEBHOOK_TIMEOUT_MS:-10000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bills-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  bills-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+
