@@ -1,0 +1,64 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import configuration from './config/configuration';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { PaymentClientModule } from './payment-client/payment-client.module';
+import { HealthModule } from './health/health.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+
+@Module({
+  imports: [
+    // Configuration
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+    }),
+
+    // Rate limiting
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 100, // 100 requests per minute
+      },
+    ]),
+
+    // Core modules
+    PrismaModule,
+    PaymentClientModule,
+
+    // Feature modules
+    AuthModule,
+    UsersModule,
+    PlansModule,
+    SubscriptionsModule,
+    WebhooksModule,
+    HealthModule,
+  ],
+  providers: [
+    // Global JWT guard (can be bypassed with @Public() decorator)
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    // Global rate limit guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    // Global exception filter
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+  ],
+})
+export class AppModule {}
+
