@@ -35,7 +35,7 @@ Comprehensive design documentation is available in the [`docs/`](./docs) directo
 
 **[System Architecture](./docs/system-architecture.md)** - Architecture diagrams, communication patterns, and security
 
-**[Task Requirements](./task.md)** - Original project requirements and specifications
+**[API Design](./docs/api-design.md)** - Complete API specifications with examples and sequence diagrams
 
 ---
 

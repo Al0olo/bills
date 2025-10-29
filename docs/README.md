@@ -45,6 +45,30 @@ Comprehensive system architecture documentation including:
 
 ---
 
+### 3. [API Design](./api-design.md)
+Complete API specification for both microservices including:
+- Detailed endpoint specifications with examples
+- Request/response schemas
+- Authentication headers and JWT flows
+- Idempotency key usage
+- Error response formats
+- Sequence diagrams for key workflows
+- Rate limiting configuration
+- Pagination patterns
+- cURL examples
+- API versioning lifecycle
+
+**Key Sections:**
+- Subscription Service API (16 endpoints)
+- Payment Service API (3 endpoints)
+- Complete subscription flow sequence diagram
+- Webhook retry flow diagram
+- Idempotency handling diagram
+- Transaction rollback scenarios
+- Testing examples with cURL
+
+---
+
 ## Quick Reference
 
 ### Architecture at a Glance
@@ -199,6 +223,6 @@ Client → Subscription Service (Port 3000) → PostgreSQL (subscriptions_db)
 ---
 
 **Last Updated**: 2025-10-29
-**Version**: 1.0.9
-**Status**: Design Phase Complete
+**Version**: 1.1.0
+**Status**: API Design Complete
 
