@@ -8,8 +8,7 @@
 // Re-export shared testing utilities
 export * from '@bills/testing';
 
-// Export service-specific utilities
-export * from './test-db.helper';
+// Export service-specific mocks
 export * from './mock-prisma.service';
 export * from './service-mocks';
 

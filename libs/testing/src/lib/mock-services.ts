@@ -5,17 +5,23 @@ import { jest } from '@jest/globals';
  * Mock JwtService for unit testing
  */
 export class MockJwtService {
-  sign = jest.fn((payload: any) => `mock.jwt.token.${payload.sub}`);
-  verify = jest.fn((token: string) => ({
-    sub: 'user-id',
-    email: 'test@example.com',
-    role: 'user',
-  }));
-  decode = jest.fn((token: string) => ({
-    sub: 'user-id',
-    email: 'test@example.com',
-    role: 'user',
-  }));
+  sign: any;
+  verify: any;
+  decode: any;
+
+  constructor() {
+    this.sign = jest.fn((payload: any) => `mock.jwt.token.${payload.sub}`);
+    this.verify = jest.fn((token: string) => ({
+      sub: 'user-id',
+      email: 'test@example.com',
+      role: 'user',
+    }));
+    this.decode = jest.fn((token: string) => ({
+      sub: 'user-id',
+      email: 'test@example.com',
+      role: 'user',
+    }));
+  }
 }
 
 /**
@@ -32,7 +38,11 @@ export class MockConfigService {
     WEBHOOK_SECRET: 'test-webhook-secret',
   };
 
-  get = jest.fn((key: string) => this.config[key]);
+  get: any;
+  
+  constructor() {
+    this.get = jest.fn((key: string) => this.config[key]);
+  }
   
   set(key: string, value: any) {
     this.config[key] = value;
@@ -43,29 +53,37 @@ export class MockConfigService {
  * Mock HttpService (Axios) for unit testing
  */
 export class MockHttpService {
-  post = jest.fn((url: string, data: any, config?: any) => 
-    of({
-      data: { id: 'mock-id', status: 'success' },
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      config: {},
-    })
-  );
+  post: any;
+  get: any;
+  put: any;
+  patch: any;
+  delete: any;
 
-  get = jest.fn((url: string, config?: any) =>
-    of({
-      data: { id: 'mock-id', status: 'success' },
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      config: {},
-    })
-  );
+  constructor() {
+    this.post = jest.fn((url: string, data: any, config?: any) => 
+      of({
+        data: { id: 'mock-id', status: 'success' },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      })
+    );
 
-  put = jest.fn();
-  patch = jest.fn();
-  delete = jest.fn();
+    this.get = jest.fn((url: string, config?: any) =>
+      of({
+        data: { id: 'mock-id', status: 'success' },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      })
+    );
+
+    this.put = jest.fn();
+    this.patch = jest.fn();
+    this.delete = jest.fn();
+  }
 }
 
 /**
@@ -167,17 +185,28 @@ export function resetMockService(service: any) {
  * Create a mock logger
  */
 export class MockLogger {
-  log = jest.fn();
-  error = jest.fn();
-  warn = jest.fn();
-  debug = jest.fn();
-  verbose = jest.fn();
+  log: any;
+  error: any;
+  warn: any;
+  debug: any;
+  verbose: any;
+
+  constructor() {
+    this.log = jest.fn();
+    this.error = jest.fn();
+    this.warn = jest.fn();
+    this.debug = jest.fn();
+    this.verbose = jest.fn();
+  }
 }
 
 /**
  * Mock bcrypt for password testing
  */
-export const mockBcrypt = {
+export const mockBcrypt: {
+  hash: any;
+  compare: any;
+} = {
   hash: jest.fn(async (password: string) => `hashed_${password}`),
   compare: jest.fn(async (password: string, hash: string) => 
     hash === `hashed_${password}`
