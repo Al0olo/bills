@@ -1,0 +1,9 @@
+{
+  "name": "subscription-service",
+  "version": "1.0.0",
+  "private": true,
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}
+

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@jest/globals':
+        specifier: ^30.2.0
+        version: 30.2.0
       '@nestjs/axios':
         specifier: ^4.0.1
         version: 4.0.1(@nestjs/common@11.1.8(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.14)(rxjs@7.8.1))(axios@1.13.1)(rxjs@7.8.1)
@@ -189,6 +192,10 @@ importers:
       webpack-cli:
         specifier: ^5.1.4
         version: 5.1.4(webpack@5.102.1)
+
+  apps/payment-service: {}
+
+  apps/subscription-service: {}
 
   libs/common-utils:
     dependencies:

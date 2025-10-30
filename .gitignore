@@ -53,6 +53,7 @@ prisma/migrations/**/migration.sql
 !prisma/migrations/**
 prisma/*.db
 prisma/*.db-journal
+prisma/migrations/**
 
 # Docker
 .dockerignore
@@ -75,3 +76,5 @@ lerna-debug.log*
 /build
 
 
+apps/payment-service/prisma/migrations/
+apps/subscription-service/prisma/migrations/
