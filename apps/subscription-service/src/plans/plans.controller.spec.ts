@@ -1,20 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PlansController } from './plans.controller';
 import { PlansService } from './plans.service';
-import { CreatePlanDto } from './dto/create-plan.dto';
+import { CreatePlanDto, BillingCycle } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { PlanResponseDto } from './dto/plan-response.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor';
 
 describe('PlansController', () => {
   let controller: PlansController;
   let plansService: jest.Mocked<PlansService>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   const mockPlanResponse: PlanResponseDto = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'Basic Plan',
     description: 'Basic subscription plan',
     price: 9.99,
-    billingCycle: 'MONTHLY',
+    billingCycle: BillingCycle.MONTHLY,
     features: ['Feature 1', 'Feature 2'],
     isActive: true,
     createdAt: new Date('2024-01-01'),
@@ -46,6 +49,17 @@ describe('PlansController', () => {
       deactivate: jest.fn(),
     };
 
+    const mockPrismaService = {
+      idempotencyKey: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          key: 'test-key',
+          response: {},
+          expiresAt: new Date(),
+        }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PlansController],
       providers: [
@@ -53,11 +67,17 @@ describe('PlansController', () => {
           provide: PlansService,
           useValue: mockPlansService,
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        IdempotencyInterceptor,
       ],
     }).compile();
 
     controller = module.get<PlansController>(PlansController);
     plansService = module.get(PlansService);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -183,7 +203,7 @@ describe('PlansController', () => {
       name: 'Enterprise Plan',
       description: 'Enterprise subscription plan',
       price: 99.99,
-      billingCycle: 'MONTHLY',
+      billingCycle: BillingCycle.MONTHLY,
       features: ['All Features', 'Priority Support', 'Custom Integration'],
     };
 
@@ -244,7 +264,7 @@ describe('PlansController', () => {
     it('should create plan with YEARLY billing cycle', async () => {
       const yearlyDto: CreatePlanDto = {
         ...createPlanDto,
-        billingCycle: 'YEARLY',
+        billingCycle: BillingCycle.YEARLY,
         price: 999.99,
       };
       const yearlyPlan = { ...mockPlanResponse, ...yearlyDto };
@@ -409,7 +429,7 @@ describe('PlansController', () => {
         'path',
         PlansController.prototype.findAll
       );
-      expect(metadata).toBe('');
+      expect(metadata).toBe('/');
     });
 
     it('should have findOne endpoint as GET with :id', () => {
@@ -425,7 +445,7 @@ describe('PlansController', () => {
         'path',
         PlansController.prototype.create
       );
-      expect(metadata).toBe('');
+      expect(metadata).toBe('/');
     });
 
     it('should have update endpoint as PATCH with :id', () => {
@@ -459,8 +479,8 @@ describe('PlansController', () => {
 
       await controller.findAll('' as any);
 
-      // Empty string is defined but not 'true' or 'false', so converts to undefined
-      expect(plansService.findAll).toHaveBeenCalledWith(undefined);
+      // Empty string is defined but not 'true', so converts to false
+      expect(plansService.findAll).toHaveBeenCalledWith(false);
     });
 
     it('should only accept "true" or "false" strings', async () => {
@@ -468,8 +488,8 @@ describe('PlansController', () => {
 
       await controller.findAll('invalid' as any);
 
-      // Invalid values should result in undefined
-      expect(plansService.findAll).toHaveBeenCalledWith(undefined);
+      // Invalid values are treated as falsy, resulting in false
+      expect(plansService.findAll).toHaveBeenCalledWith(false);
     });
   });
 

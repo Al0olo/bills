@@ -3,7 +3,8 @@ import { NotFoundException, ConflictException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginationDto, SortOrder } from '../common/dto/pagination.dto';
+import { createMockPrismaService } from '../test-utils';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -36,14 +37,7 @@ describe('UsersService', () => {
   ];
 
   beforeEach(async () => {
-    const mockPrismaService = {
-      user: {
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-        count: jest.fn(),
-      },
-    };
+    const mockPrismaService = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,7 +59,7 @@ describe('UsersService', () => {
 
   describe('getProfile', () => {
     it('should successfully get user profile', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.getProfile(mockUser.id);
 
@@ -83,7 +77,7 @@ describe('UsersService', () => {
     });
 
     it('should not return password hash', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.getProfile(mockUser.id);
 
@@ -92,7 +86,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundException if user does not exist', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.getProfile('non-existent')).rejects.toThrow(
         NotFoundException
@@ -103,7 +97,7 @@ describe('UsersService', () => {
     });
 
     it('should handle database errors', async () => {
-      prismaService.user.findUnique.mockRejectedValue(
+      (prismaService.user.findUnique as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -113,7 +107,7 @@ describe('UsersService', () => {
     });
 
     it('should return user with correct fields', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.getProfile(mockUser.id);
 
@@ -134,8 +128,8 @@ describe('UsersService', () => {
     it('should successfully update user profile', async () => {
       const updatedUser = { ...mockUser, ...updateDto };
       
-      prismaService.user.findUnique.mockResolvedValue(null); // Email not in use
-      prismaService.user.update.mockResolvedValue(updatedUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null); // Email not in use
+      (prismaService.user.update as jest.Mock).mockResolvedValue(updatedUser);
 
       const result = await service.updateProfile(mockUser.id, updateDto);
 
@@ -158,7 +152,7 @@ describe('UsersService', () => {
       const nameOnlyDto: UpdateUserDto = { name: 'New Name' };
       const updatedUser = { ...mockUser, name: 'New Name' };
       
-      prismaService.user.update.mockResolvedValue(updatedUser);
+      (prismaService.user.update as jest.Mock).mockResolvedValue(updatedUser);
 
       const result = await service.updateProfile(mockUser.id, nameOnlyDto);
 
@@ -172,8 +166,8 @@ describe('UsersService', () => {
       const emailOnlyDto: UpdateUserDto = { email: 'newemail@example.com' };
       const updatedUser = { ...mockUser, email: 'newemail@example.com' };
       
-      prismaService.user.findUnique.mockResolvedValue(null);
-      prismaService.user.update.mockResolvedValue(updatedUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.user.update as jest.Mock).mockResolvedValue(updatedUser);
 
       const result = await service.updateProfile(mockUser.id, emailOnlyDto);
 
@@ -183,7 +177,7 @@ describe('UsersService', () => {
     it('should throw ConflictException if email already in use by another user', async () => {
       const otherUser = { ...mockUser, id: 'different-user-id' };
       
-      prismaService.user.findUnique.mockResolvedValue(otherUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(otherUser);
 
       await expect(
         service.updateProfile(mockUser.id, updateDto)
@@ -197,7 +191,7 @@ describe('UsersService', () => {
 
     it('should throw ConflictException with correct error code', async () => {
       const otherUser = { ...mockUser, id: 'different-user-id' };
-      prismaService.user.findUnique.mockResolvedValue(otherUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(otherUser);
 
       try {
         await service.updateProfile(mockUser.id, updateDto);
@@ -214,8 +208,8 @@ describe('UsersService', () => {
       };
       const updatedUser = { ...mockUser, name: 'Updated Name' };
       
-      prismaService.user.findUnique.mockResolvedValue(mockUser); // Same user
-      prismaService.user.update.mockResolvedValue(updatedUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser); // Same user
+      (prismaService.user.update as jest.Mock).mockResolvedValue(updatedUser);
 
       const result = await service.updateProfile(mockUser.id, sameEmailDto);
 
@@ -224,8 +218,8 @@ describe('UsersService', () => {
     });
 
     it('should handle database errors during update', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
-      prismaService.user.update.mockRejectedValue(
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.user.update as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -235,8 +229,8 @@ describe('UsersService', () => {
     });
 
     it('should handle non-existent user', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
-      prismaService.user.update.mockRejectedValue(
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.user.update as jest.Mock).mockRejectedValue(
         new Error('Record to update not found')
       );
 
@@ -250,8 +244,8 @@ describe('UsersService', () => {
         email: 'UPDATED@EXAMPLE.COM',
       };
       
-      prismaService.user.findUnique.mockResolvedValue(null);
-      prismaService.user.update.mockResolvedValue({
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.user.update as jest.Mock).mockResolvedValue({
         ...mockUser,
         email: 'UPDATED@EXAMPLE.COM',
       });
@@ -268,12 +262,12 @@ describe('UsersService', () => {
     const paginationDto: PaginationDto = {
       page: 1,
       limit: 20,
-      order: 'desc',
+      order: SortOrder.DESC,
     };
 
     it('should return paginated users without search', async () => {
-      prismaService.user.findMany.mockResolvedValue(mockUsers);
-      prismaService.user.count.mockResolvedValue(mockUsers.length);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(mockUsers.length);
 
       const result = await service.findAll(paginationDto);
 
@@ -298,8 +292,8 @@ describe('UsersService', () => {
 
     it('should filter users by search term in email', async () => {
       const searchResults = [mockUsers[1]];
-      prismaService.user.findMany.mockResolvedValue(searchResults);
-      prismaService.user.count.mockResolvedValue(1);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(searchResults);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(1);
 
       const result = await service.findAll(paginationDto, 'user2');
 
@@ -318,8 +312,8 @@ describe('UsersService', () => {
 
     it('should filter users by search term in name', async () => {
       const searchResults = [mockUsers[0]];
-      prismaService.user.findMany.mockResolvedValue(searchResults);
-      prismaService.user.count.mockResolvedValue(1);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(searchResults);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(1);
 
       await service.findAll(paginationDto, 'Test User');
 
@@ -336,8 +330,8 @@ describe('UsersService', () => {
     });
 
     it('should perform case-insensitive search', async () => {
-      prismaService.user.findMany.mockResolvedValue([mockUsers[0]]);
-      prismaService.user.count.mockResolvedValue(1);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue([mockUsers[0]]);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(1);
 
       await service.findAll(paginationDto, 'TEST');
 
@@ -355,10 +349,10 @@ describe('UsersService', () => {
     });
 
     it('should handle pagination correctly', async () => {
-      const page2Dto: PaginationDto = { page: 2, limit: 10, order: 'asc' };
+      const page2Dto: PaginationDto = { page: 2, limit: 10, order: SortOrder.ASC };
       
-      prismaService.user.findMany.mockResolvedValue([mockUsers[1]]);
-      prismaService.user.count.mockResolvedValue(15);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue([mockUsers[1]]);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(15);
 
       await service.findAll(page2Dto);
 
@@ -371,10 +365,10 @@ describe('UsersService', () => {
     });
 
     it('should order by createdAt', async () => {
-      prismaService.user.findMany.mockResolvedValue(mockUsers);
-      prismaService.user.count.mockResolvedValue(mockUsers.length);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(mockUsers.length);
 
-      await service.findAll({ ...paginationDto, order: 'asc' });
+      await service.findAll({ ...paginationDto, order: SortOrder.ASC });
 
       expect(prismaService.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -386,8 +380,8 @@ describe('UsersService', () => {
     });
 
     it('should return empty array if no users found', async () => {
-      prismaService.user.findMany.mockResolvedValue([]);
-      prismaService.user.count.mockResolvedValue(0);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue([]);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(0);
 
       const result = await service.findAll(paginationDto);
 
@@ -396,8 +390,8 @@ describe('UsersService', () => {
     });
 
     it('should calculate pagination metadata correctly', async () => {
-      prismaService.user.findMany.mockResolvedValue(mockUsers);
-      prismaService.user.count.mockResolvedValue(45);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(45);
 
       const result = await service.findAll(paginationDto);
 
@@ -412,8 +406,8 @@ describe('UsersService', () => {
     });
 
     it('should not return password hashes in results', async () => {
-      prismaService.user.findMany.mockResolvedValue(mockUsers);
-      prismaService.user.count.mockResolvedValue(mockUsers.length);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(mockUsers.length);
 
       const result = await service.findAll(paginationDto);
 
@@ -424,8 +418,8 @@ describe('UsersService', () => {
     });
 
     it('should handle empty search term', async () => {
-      prismaService.user.findMany.mockResolvedValue(mockUsers);
-      prismaService.user.count.mockResolvedValue(mockUsers.length);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(mockUsers.length);
 
       await service.findAll(paginationDto, '');
 
@@ -440,7 +434,7 @@ describe('UsersService', () => {
 
   describe('findOne', () => {
     it('should successfully get user by ID', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.findOne(mockUser.id);
 
@@ -458,7 +452,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundException if user does not exist', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.findOne('non-existent')).rejects.toThrow(
         NotFoundException
@@ -469,7 +463,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundException with correct error code', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       try {
         await service.findOne('non-existent');
@@ -480,7 +474,7 @@ describe('UsersService', () => {
     });
 
     it('should not return password hash', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.findOne(mockUser.id);
 
@@ -489,7 +483,7 @@ describe('UsersService', () => {
     });
 
     it('should handle database errors', async () => {
-      prismaService.user.findUnique.mockRejectedValue(
+      (prismaService.user.findUnique as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -499,7 +493,7 @@ describe('UsersService', () => {
     });
 
     it('should return user with all required fields', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.findOne(mockUser.id);
 
@@ -516,8 +510,8 @@ describe('UsersService', () => {
       const updateDto: UpdateUserDto = { email: 'new@example.com' };
       
       // Simulate race condition: email becomes taken between check and update
-      prismaService.user.findUnique.mockResolvedValue(null);
-      prismaService.user.update.mockRejectedValue(
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.user.update as jest.Mock).mockRejectedValue(
         new Error('Unique constraint violation')
       );
 
@@ -531,7 +525,7 @@ describe('UsersService', () => {
       const updateDto: UpdateUserDto = { name: longName };
       const updatedUser = { ...mockUser, name: longName };
       
-      prismaService.user.update.mockResolvedValue(updatedUser);
+      (prismaService.user.update as jest.Mock).mockResolvedValue(updatedUser);
 
       const result = await service.updateProfile(mockUser.id, updateDto);
 
@@ -541,8 +535,8 @@ describe('UsersService', () => {
     it('should handle special characters in search', async () => {
       const specialSearch = "user@test's.com";
       
-      prismaService.user.findMany.mockResolvedValue([]);
-      prismaService.user.count.mockResolvedValue(0);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue([]);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(0);
 
       await service.findAll({} as PaginationDto, specialSearch);
 
@@ -560,10 +554,10 @@ describe('UsersService', () => {
     });
 
     it('should handle pagination at boundaries', async () => {
-      const lastPageDto: PaginationDto = { page: 3, limit: 20, order: 'desc' };
+      const lastPageDto: PaginationDto = { page: 3, limit: 20, order: SortOrder.DESC };
       
-      prismaService.user.findMany.mockResolvedValue([mockUsers[0]]);
-      prismaService.user.count.mockResolvedValue(41);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue([mockUsers[0]]);
+      (prismaService.user.count as jest.Mock).mockResolvedValue(41);
 
       const result = await service.findAll(lastPageDto);
 

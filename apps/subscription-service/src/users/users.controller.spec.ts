@@ -3,11 +3,14 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginationDto, SortOrder } from '../common/dto/pagination.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor';
 
 describe('UsersController', () => {
   let controller: UsersController;
   let usersService: jest.Mocked<UsersService>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   const mockUser = {
     id: 'user-123',
@@ -42,6 +45,17 @@ describe('UsersController', () => {
       findOne: jest.fn(),
     };
 
+    const mockPrismaService = {
+      idempotencyKey: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          key: 'test-key',
+          response: {},
+          expiresAt: new Date(),
+        }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
       providers: [
@@ -49,11 +63,17 @@ describe('UsersController', () => {
           provide: UsersService,
           useValue: mockUsersService,
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        IdempotencyInterceptor,
       ],
     }).compile();
 
     controller = module.get<UsersController>(UsersController);
     usersService = module.get(UsersService);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -222,7 +242,7 @@ describe('UsersController', () => {
     const paginationDto: PaginationDto = {
       page: 1,
       limit: 20,
-      order: 'desc',
+      order: SortOrder.DESC,
     };
 
     const mockPaginatedResponse = {
@@ -272,7 +292,7 @@ describe('UsersController', () => {
       const customPagination: PaginationDto = {
         page: 2,
         limit: 10,
-        order: 'asc',
+        order: SortOrder.ASC,
       };
       usersService.findAll.mockResolvedValue(mockPaginatedResponse);
 
@@ -436,7 +456,7 @@ describe('UsersController', () => {
         'path',
         UsersController.prototype.findAll
       );
-      expect(metadata).toBe('');
+      expect(metadata).toBe('/');
     });
 
     it('should have findOne endpoint as GET with :id', () => {
@@ -484,7 +504,7 @@ describe('UsersController', () => {
       const fullPagination: PaginationDto = {
         page: 3,
         limit: 50,
-        order: 'asc',
+        order: SortOrder.ASC,
       };
       usersService.findAll.mockResolvedValue({
         data: [],

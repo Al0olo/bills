@@ -37,10 +37,12 @@ export class WebhookSignatureGuard implements CanActivate {
       .digest('hex');
 
     // Compare signatures (timing-safe comparison)
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
+    // Ensure buffers have the same length for timingSafeEqual
+    const signatureBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+    
+    const isValid = signatureBuffer.length === expectedBuffer.length && 
+      crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 
     if (!isValid) {
       this.logger.warn('Invalid webhook signature');

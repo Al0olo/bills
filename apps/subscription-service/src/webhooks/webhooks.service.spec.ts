@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { WebhooksService } from './webhooks.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentWebhookDto } from './dto/payment-webhook.dto';
+import { PaymentWebhookDto, WebhookEventType } from './dto/payment-webhook.dto';
 
 describe('WebhooksService', () => {
   let service: WebhooksService;
@@ -66,7 +66,7 @@ describe('WebhooksService', () => {
 
   describe('processPaymentWebhook', () => {
     const successWebhookDto: PaymentWebhookDto = {
-      eventType: 'payment.success',
+      eventType: WebhookEventType.PAYMENT_COMPLETED,
       paymentId: 'pay-123',
       externalReference: 'sub-123',
       status: 'success',
@@ -139,7 +139,7 @@ describe('WebhooksService', () => {
     it('should process failed payment webhook', async () => {
       const failedWebhookDto: PaymentWebhookDto = {
         ...successWebhookDto,
-        eventType: 'payment.failed',
+        eventType: WebhookEventType.PAYMENT_FAILED,
         status: 'failed',
       };
 
@@ -159,7 +159,7 @@ describe('WebhooksService', () => {
     it('should update subscription status to CANCELLED on payment failure', async () => {
       const failedWebhookDto: PaymentWebhookDto = {
         ...successWebhookDto,
-        eventType: 'payment.failed',
+        eventType: WebhookEventType.PAYMENT_FAILED,
         status: 'failed',
       };
 
@@ -182,7 +182,7 @@ describe('WebhooksService', () => {
     it('should update payment record status to FAILED on payment failure', async () => {
       const failedWebhookDto: PaymentWebhookDto = {
         ...successWebhookDto,
-        eventType: 'payment.failed',
+        eventType: WebhookEventType.PAYMENT_FAILED,
         status: 'failed',
       };
 

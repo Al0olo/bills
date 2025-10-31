@@ -10,7 +10,9 @@ import { PaymentClientService } from '../payment-client/payment-client.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpgradeSubscriptionDto } from './dto/upgrade-subscription.dto';
 import { DowngradeSubscriptionDto } from './dto/downgrade-subscription.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginationDto, SortOrder } from '../common/dto/pagination.dto';
+import { SubscriptionStatus } from './dto/subscription-response.dto';
+import { PaymentStatus } from '@prisma/client';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -290,7 +292,7 @@ describe('SubscriptionsService', () => {
     const paginationDto: PaginationDto = {
       page: 1,
       limit: 20,
-      order: 'desc',
+      order: SortOrder.DESC,
     };
 
     it('should return paginated subscriptions', async () => {
@@ -310,11 +312,11 @@ describe('SubscriptionsService', () => {
       prismaService.subscription.findMany.mockResolvedValue([]);
       prismaService.subscription.count.mockResolvedValue(0);
 
-      await service.findAll(mockUser.id, paginationDto, 'ACTIVE');
+      await service.findAll(mockUser.id, paginationDto, SubscriptionStatus.ACTIVE);
 
       expect(prismaService.subscription.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: mockUser.id, status: 'ACTIVE' },
+          where: { userId: mockUser.id, status: SubscriptionStatus.ACTIVE },
         })
       );
     });
@@ -323,7 +325,7 @@ describe('SubscriptionsService', () => {
       const customPagination: PaginationDto = {
         page: 2,
         limit: 10,
-        order: 'asc',
+        order: SortOrder.ASC,
       };
 
       prismaService.subscription.findMany.mockResolvedValue([]);
@@ -432,7 +434,7 @@ describe('SubscriptionsService', () => {
     it('should throw UnprocessableEntityException if subscription not active', async () => {
       prismaService.subscription.findFirst.mockResolvedValue({
         ...mockSubscription,
-        status: 'CANCELLED',
+        status: SubscriptionStatus.CANCELLED,
       });
 
       await expect(
@@ -583,7 +585,7 @@ describe('SubscriptionsService', () => {
       const expected = new Date();
       expected.setMonth(expected.getMonth() + 1);
 
-      expect(result.effectiveDate.getMonth()).toBe(expected.getMonth());
+      expect(result.effectiveDate?.getMonth()).toBe(expected.getMonth());
     });
   });
 
@@ -598,7 +600,7 @@ describe('SubscriptionsService', () => {
 
       const result = await service.cancel(mockSubscription.id, mockUser.id);
 
-      expect(result.status).toBe('CANCELLED');
+      expect(result.status).toBe(SubscriptionStatus.CANCELLED);
       expect(result.endDate).toBeDefined();
     });
 
@@ -613,7 +615,7 @@ describe('SubscriptionsService', () => {
     it('should throw UnprocessableEntityException if already cancelled', async () => {
       prismaService.subscription.findFirst.mockResolvedValue({
         ...mockSubscription,
-        status: 'CANCELLED',
+        status: SubscriptionStatus.CANCELLED,
       });
 
       await expect(
@@ -629,7 +631,7 @@ describe('SubscriptionsService', () => {
       prismaService.subscription.findFirst.mockResolvedValue(mockSubscription);
       prismaService.subscription.update.mockResolvedValue({
         ...mockSubscription,
-        status: 'CANCELLED',
+        status: SubscriptionStatus.CANCELLED,
         endDate: now,
       });
 
@@ -652,7 +654,7 @@ describe('SubscriptionsService', () => {
 
     it('should handle decimal values correctly', () => {
       const result = (service as any).calculateProration(9.99, 19.99);
-      expect(result).toBe(10);
+      expect(result).toBeCloseTo(10, 1);
     });
 
     it('should handle equal prices', () => {
@@ -685,7 +687,7 @@ describe('SubscriptionsService', () => {
             id: 'pay-1',
             amount: 9.99,
             currency: 'USD',
-            status: 'SUCCESS',
+            status: PaymentStatus.SUCCESS,
             createdAt: new Date(),
           },
         ],

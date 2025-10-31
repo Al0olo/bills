@@ -2,23 +2,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
-import { PaymentResponseDto } from './dto/payment-response.dto';
+import { PaymentResponseDto, PaymentStatus } from './dto/payment-response.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor';
 
 describe('PaymentsController', () => {
   let controller: PaymentsController;
   let paymentsService: jest.Mocked<PaymentsService>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   const mockPaymentResponse: PaymentResponseDto = {
     id: 'pay-123',
     externalReference: 'sub-123',
     amount: 29.99,
     currency: 'USD',
-    status: 'PENDING',
-    failureReason: null,
+    status: PaymentStatus.PENDING,
+    failureReason: undefined,
     metadata: {},
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
-    processedAt: null,
+    processedAt: undefined,
   };
 
   beforeEach(async () => {
@@ -28,6 +31,17 @@ describe('PaymentsController', () => {
       getPaymentByReference: jest.fn(),
     };
 
+    const mockPrismaService = {
+      idempotencyKey: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          key: 'test-key',
+          response: {},
+          expiresAt: new Date(),
+        }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PaymentsController],
       providers: [
@@ -35,11 +49,17 @@ describe('PaymentsController', () => {
           provide: PaymentsService,
           useValue: mockPaymentsService,
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        IdempotencyInterceptor,
       ],
     }).compile();
 
     controller = module.get<PaymentsController>(PaymentsController);
     paymentsService = module.get(PaymentsService);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -88,7 +108,7 @@ describe('PaymentsController', () => {
 
       const result = await controller.initiatePayment(initiatePaymentDto);
 
-      expect(result.status).toBe('PENDING');
+      expect(result.status).toBe(PaymentStatus.PENDING);
     });
 
     it('should include external reference in response', async () => {
@@ -214,7 +234,7 @@ describe('PaymentsController', () => {
     it('should return complete payment details', async () => {
       const completePayment: PaymentResponseDto = {
         ...mockPaymentResponse,
-        status: 'SUCCESS',
+        status: PaymentStatus.SUCCESS,
         processedAt: new Date(),
       };
       paymentsService.getPayment.mockResolvedValue(completePayment);
@@ -222,7 +242,7 @@ describe('PaymentsController', () => {
       const result = await controller.getPayment(paymentId);
 
       expect(result).toHaveProperty('id');
-      expect(result).toHaveProperty('status', 'SUCCESS');
+      expect(result).toHaveProperty('status', PaymentStatus.SUCCESS);
       expect(result).toHaveProperty('processedAt');
     });
 
@@ -235,10 +255,10 @@ describe('PaymentsController', () => {
 
     it('should return payment with different statuses', async () => {
       const statuses: Array<PaymentResponseDto['status']> = [
-        'PENDING',
-        'PROCESSING',
-        'SUCCESS',
-        'FAILED',
+        PaymentStatus.PENDING,
+        PaymentStatus.PROCESSING,
+        PaymentStatus.SUCCESS,
+        PaymentStatus.FAILED,
       ];
 
       for (const status of statuses) {
@@ -253,14 +273,14 @@ describe('PaymentsController', () => {
     it('should return failed payment with failure reason', async () => {
       const failedPayment: PaymentResponseDto = {
         ...mockPaymentResponse,
-        status: 'FAILED',
+        status: PaymentStatus.FAILED,
         failureReason: 'Payment declined',
       };
       paymentsService.getPayment.mockResolvedValue(failedPayment);
 
       const result = await controller.getPayment(paymentId);
 
-      expect(result.status).toBe('FAILED');
+      expect(result.status).toBe(PaymentStatus.FAILED);
       expect(result.failureReason).toBe('Payment declined');
     });
 
@@ -379,7 +399,7 @@ describe('PaymentsController', () => {
         'path',
         PaymentsController.prototype.initiatePayment
       );
-      expect(metadata).toBe('');
+      expect(metadata).toBe('/');
     });
 
     it('should have getPayment endpoint as GET with :id', () => {
@@ -443,30 +463,30 @@ describe('PaymentsController', () => {
       // Initiate payment
       const pendingPayment: PaymentResponseDto = {
         ...mockPaymentResponse,
-        status: 'PENDING',
+        status: PaymentStatus.PENDING,
       };
       paymentsService.initiatePayment.mockResolvedValue(pendingPayment);
       const initiated = await controller.initiatePayment(initiateDto);
-      expect(initiated.status).toBe('PENDING');
+      expect(initiated.status).toBe(PaymentStatus.PENDING);
 
       // Check payment status - processing
       const processingPayment: PaymentResponseDto = {
         ...mockPaymentResponse,
-        status: 'PROCESSING',
+        status: PaymentStatus.PROCESSING,
       };
       paymentsService.getPayment.mockResolvedValue(processingPayment);
       const processing = await controller.getPayment(initiated.id);
-      expect(processing.status).toBe('PROCESSING');
+      expect(processing.status).toBe(PaymentStatus.PROCESSING);
 
       // Check payment status - success
       const successPayment: PaymentResponseDto = {
         ...mockPaymentResponse,
-        status: 'SUCCESS',
+        status: PaymentStatus.SUCCESS,
         processedAt: new Date(),
       };
       paymentsService.getPayment.mockResolvedValue(successPayment);
       const completed = await controller.getPayment(initiated.id);
-      expect(completed.status).toBe('SUCCESS');
+      expect(completed.status).toBe(PaymentStatus.SUCCESS);
       expect(completed.processedAt).toBeDefined();
     });
 
@@ -484,14 +504,14 @@ describe('PaymentsController', () => {
       // Check payment status - failed
       const failedPayment: PaymentResponseDto = {
         ...mockPaymentResponse,
-        status: 'FAILED',
+        status: PaymentStatus.FAILED,
         failureReason: 'Payment declined',
         processedAt: new Date(),
       };
       paymentsService.getPayment.mockResolvedValue(failedPayment);
       const failed = await controller.getPayment(initiated.id);
       
-      expect(failed.status).toBe('FAILED');
+      expect(failed.status).toBe(PaymentStatus.FAILED);
       expect(failed.failureReason).toBe('Payment declined');
     });
 

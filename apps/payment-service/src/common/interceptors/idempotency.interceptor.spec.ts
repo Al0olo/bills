@@ -3,6 +3,7 @@ import { ExecutionContext, CallHandler } from '@nestjs/common';
 import { IdempotencyInterceptor } from './idempotency.interceptor';
 import { PrismaService } from '../../prisma/prisma.service';
 import { of } from 'rxjs';
+import { createMockPrismaService } from '../../test-utils';
 
 describe('IdempotencyInterceptor', () => {
   let interceptor: IdempotencyInterceptor;
@@ -17,12 +18,7 @@ describe('IdempotencyInterceptor', () => {
   const mockIdempotencyKey = 'idempotency-key-123';
 
   beforeEach(async () => {
-    const mockPrismaService = {
-      idempotencyKey: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
-      },
-    };
+    const mockPrismaService = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -94,8 +90,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 
@@ -111,7 +107,7 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue({
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue({
         key: mockIdempotencyKey,
         response: cachedResponse,
         expiresAt: new Date(),
@@ -132,14 +128,16 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       const observable = await interceptor.intercept(context, next);
       
       await new Promise((resolve) => {
         observable.subscribe({
-          next: () => {},
+          next: () => {
+            // Do nothing
+          },
           complete: () => resolve(true),
         });
       });
@@ -163,14 +161,16 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       const observable = await interceptor.intercept(context, next);
       
       await new Promise((resolve) => {
         observable.subscribe({
-          next: () => {},
+          next: () => {
+            // Do nothing
+          },
           complete: () => resolve(true),
         });
       });
@@ -185,7 +185,7 @@ describe('IdempotencyInterceptor', () => {
         })
       );
 
-      const createCall = prismaService.idempotencyKey.create.mock.calls[0];
+      const createCall = (prismaService.idempotencyKey.create as jest.Mock).mock.calls[0];
       if (createCall) {
         const expiresAt = createCall[0]?.data?.expiresAt;
         const now = Date.now();
@@ -203,8 +203,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 
@@ -217,8 +217,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 
@@ -231,8 +231,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 
@@ -267,7 +267,7 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockRejectedValue(
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -289,8 +289,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockRejectedValue({
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockRejectedValue({
         code: 'P2002', // Prisma unique constraint violation
         message: 'Unique constraint failed',
       });
@@ -299,7 +299,9 @@ describe('IdempotencyInterceptor', () => {
       
       await new Promise((resolve) => {
         observable.subscribe({
-          next: () => {},
+          next: () => {
+            // Do nothing
+          },
           complete: () => resolve(true),
         });
       });
@@ -316,8 +318,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockRejectedValue(
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -325,7 +327,9 @@ describe('IdempotencyInterceptor', () => {
       
       await new Promise((resolve) => {
         observable.subscribe({
-          next: () => {},
+          next: () => {
+            // Do nothing
+          },
           complete: () => resolve(true),
         });
       });
@@ -351,14 +355,16 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler(complexResponse);
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       const observable = await interceptor.intercept(context, next);
       
       await new Promise((resolve) => {
         observable.subscribe({
-          next: () => {},
+          next: () => {
+            // Do nothing
+          },
           complete: () => resolve(true),
         });
       });
@@ -380,14 +386,16 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler(null);
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       const observable = await interceptor.intercept(context, next);
       
       await new Promise((resolve) => {
         observable.subscribe({
-          next: () => {},
+          next: () => {
+            // Do nothing
+          },
           complete: () => resolve(true),
         });
       });
@@ -413,8 +421,8 @@ describe('IdempotencyInterceptor', () => {
       const context1 = createMockContext('POST', { 'idempotency-key': key1 });
       const next1 = createMockCallHandler(response1);
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context1, next1);
 
@@ -438,8 +446,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       const observable = await interceptor.intercept(context, next);
       const result = await new Promise((resolve) => {
@@ -463,8 +471,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next2 = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context1, next1);
       await interceptor.intercept(context2, next2);
@@ -486,8 +494,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 
@@ -503,8 +511,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 
@@ -520,8 +528,8 @@ describe('IdempotencyInterceptor', () => {
       });
       const next = createMockCallHandler();
 
-      prismaService.idempotencyKey.findUnique.mockResolvedValue(null);
-      prismaService.idempotencyKey.create.mockResolvedValue({} as any);
+      (prismaService.idempotencyKey.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.idempotencyKey.create as jest.Mock).mockResolvedValue({});
 
       await interceptor.intercept(context, next);
 

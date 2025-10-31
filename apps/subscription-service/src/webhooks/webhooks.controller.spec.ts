@@ -1,11 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
-import { PaymentWebhookDto } from './dto/payment-webhook.dto';
+import { PaymentWebhookDto, WebhookEventType } from './dto/payment-webhook.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor';
 
 describe('WebhooksController', () => {
   let controller: WebhooksController;
   let webhooksService: jest.Mocked<WebhooksService>;
+  let configService: jest.Mocked<ConfigService>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   const mockWebhookResponse = {
     received: true,
@@ -19,6 +24,24 @@ describe('WebhooksController', () => {
       processPaymentWebhook: jest.fn(),
     };
 
+    const mockConfigService = {
+      get: jest.fn((key: string) => {
+        if (key === 'WEBHOOK_SECRET') return 'test-secret';
+        return null;
+      }),
+    };
+
+    const mockPrismaService = {
+      idempotencyKey: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          key: 'test-key',
+          response: {},
+          expiresAt: new Date(),
+        }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [WebhooksController],
       providers: [
@@ -26,11 +49,22 @@ describe('WebhooksController', () => {
           provide: WebhooksService,
           useValue: mockWebhooksService,
         },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        IdempotencyInterceptor,
       ],
     }).compile();
 
     controller = module.get<WebhooksController>(WebhooksController);
     webhooksService = module.get(WebhooksService);
+    configService = module.get(ConfigService);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -39,7 +73,7 @@ describe('WebhooksController', () => {
 
   describe('receivePaymentWebhook', () => {
     const webhookDto: PaymentWebhookDto = {
-      eventType: 'payment.success',
+      eventType: WebhookEventType.PAYMENT_COMPLETED,
       paymentId: 'pay-123',
       externalReference: 'sub-123',
       status: 'success',
@@ -106,7 +140,7 @@ describe('WebhooksController', () => {
     it('should handle failed payment webhook', async () => {
       const failedWebhookDto: PaymentWebhookDto = {
         ...webhookDto,
-        eventType: 'payment.failed',
+        eventType: WebhookEventType.PAYMENT_FAILED,
         status: 'failed',
       };
       const failedResponse = {
@@ -147,7 +181,7 @@ describe('WebhooksController', () => {
 
       expect(webhooksService.processPaymentWebhook).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'payment.success',
+          eventType: WebhookEventType.PAYMENT_COMPLETED,
           paymentId: 'pay-123',
           externalReference: 'sub-123',
           status: 'success',
@@ -216,7 +250,7 @@ describe('WebhooksController', () => {
     });
 
     it('should handle different event types', async () => {
-      const eventTypes = ['payment.success', 'payment.failed'];
+      const eventTypes = [WebhookEventType.PAYMENT_COMPLETED, WebhookEventType.PAYMENT_FAILED];
 
       for (const eventType of eventTypes) {
         const webhook: PaymentWebhookDto = {
@@ -277,7 +311,7 @@ describe('WebhooksController', () => {
 
   describe('error handling', () => {
     const webhookDto: PaymentWebhookDto = {
-      eventType: 'payment.success',
+      eventType: WebhookEventType.PAYMENT_COMPLETED,
       paymentId: 'pay-123',
       externalReference: 'sub-123',
       status: 'success',
@@ -324,7 +358,7 @@ describe('WebhooksController', () => {
 
   describe('idempotency', () => {
     const webhookDto: PaymentWebhookDto = {
-      eventType: 'payment.success',
+      eventType: WebhookEventType.PAYMENT_COMPLETED,
       paymentId: 'pay-123',
       externalReference: 'sub-123',
       status: 'success',
@@ -349,7 +383,7 @@ describe('WebhooksController', () => {
   describe('webhook scenarios', () => {
     it('should handle upgrade payment webhook', async () => {
       const upgradeWebhook: PaymentWebhookDto = {
-        eventType: 'payment.success',
+        eventType: WebhookEventType.PAYMENT_COMPLETED,
         paymentId: 'pay-upgrade-456',
         externalReference: 'sub-123',
         status: 'success',
@@ -375,7 +409,7 @@ describe('WebhooksController', () => {
 
     it('should handle initial subscription payment webhook', async () => {
       const initialWebhook: PaymentWebhookDto = {
-        eventType: 'payment.success',
+        eventType: WebhookEventType.PAYMENT_COMPLETED,
         paymentId: 'pay-initial-789',
         externalReference: 'sub-new-123',
         status: 'success',

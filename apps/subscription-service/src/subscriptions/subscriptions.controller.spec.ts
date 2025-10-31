@@ -5,12 +5,16 @@ import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpgradeSubscriptionDto } from './dto/upgrade-subscription.dto';
 import { DowngradeSubscriptionDto } from './dto/downgrade-subscription.dto';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { SubscriptionResponseDto, UpgradeResponseDto, DowngradeResponseDto } from './dto/subscription-response.dto';
+import { PaginationDto, SortOrder } from '../common/dto/pagination.dto';
+import { SubscriptionResponseDto, UpgradeResponseDto, DowngradeResponseDto, SubscriptionStatus } from './dto/subscription-response.dto';
+import { BillingCycle } from '../plans/dto/create-plan.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor';
 
 describe('SubscriptionsController', () => {
   let controller: SubscriptionsController;
   let subscriptionsService: jest.Mocked<SubscriptionsService>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   const mockUser = {
     id: 'user-123',
@@ -22,7 +26,7 @@ describe('SubscriptionsController', () => {
     id: 'sub-123',
     userId: mockUser.id,
     planId: 'plan-123',
-    status: 'ACTIVE',
+    status: SubscriptionStatus.ACTIVE,
     startDate: new Date(),
     endDate: null,
     paymentGatewayId: 'pay_123',
@@ -34,7 +38,7 @@ describe('SubscriptionsController', () => {
       name: 'Basic Plan',
       description: 'Basic subscription',
       price: 9.99,
-      billingCycle: 'MONTHLY',
+      billingCycle: BillingCycle.MONTHLY,
       features: ['Feature 1'],
       isActive: true,
       createdAt: new Date(),
@@ -46,12 +50,23 @@ describe('SubscriptionsController', () => {
   beforeEach(async () => {
     const mockSubscriptionsService = {
       create: jest.fn(),
-      initiatePayment: jest.fn(),
+      initiatePayment: jest.fn().mockResolvedValue(undefined),
       findAll: jest.fn(),
       findOne: jest.fn(),
       upgrade: jest.fn(),
       downgrade: jest.fn(),
       cancel: jest.fn(),
+    };
+
+    const mockPrismaService = {
+      idempotencyKey: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          key: 'test-key',
+          response: {},
+          expiresAt: new Date(),
+        }),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -61,11 +76,17 @@ describe('SubscriptionsController', () => {
           provide: SubscriptionsService,
           useValue: mockSubscriptionsService,
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        IdempotencyInterceptor,
       ],
     }).compile();
 
     controller = module.get<SubscriptionsController>(SubscriptionsController);
     subscriptionsService = module.get(SubscriptionsService);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -145,7 +166,7 @@ describe('SubscriptionsController', () => {
     const paginationDto: PaginationDto = {
       page: 1,
       limit: 20,
-      order: 'desc',
+      order: SortOrder.DESC,
     };
 
     const mockPaginatedResponse = {
@@ -214,7 +235,7 @@ describe('SubscriptionsController', () => {
       const customPagination: PaginationDto = {
         page: 2,
         limit: 10,
-        order: 'asc',
+        order: SortOrder.ASC,
       };
       subscriptionsService.findAll.mockResolvedValue(mockPaginatedResponse);
 
@@ -405,7 +426,7 @@ describe('SubscriptionsController', () => {
       );
 
       expect(result.effectiveDate).toBeDefined();
-      expect(result.effectiveDate.getTime()).toBeGreaterThan(Date.now());
+      expect(result.effectiveDate?.getTime()).toBeGreaterThan(Date.now());
     });
   });
 
@@ -414,7 +435,7 @@ describe('SubscriptionsController', () => {
 
     const cancelledResponse: SubscriptionResponseDto = {
       ...mockSubscriptionResponse,
-      status: 'CANCELLED',
+      status: SubscriptionStatus.CANCELLED,
       endDate: new Date(),
     };
 
@@ -436,7 +457,7 @@ describe('SubscriptionsController', () => {
         mockUser.id
       );
       expect(result).toEqual(cancelledResponse);
-      expect(result.status).toBe('CANCELLED');
+      expect(result.status).toBe(SubscriptionStatus.CANCELLED);
     });
 
     it('should pass subscription ID and user ID to service', async () => {
@@ -477,7 +498,7 @@ describe('SubscriptionsController', () => {
         cancelDto
       );
 
-      expect(result.status).toBe('CANCELLED');
+      expect(result.status).toBe(SubscriptionStatus.CANCELLED);
       expect(result.endDate).toBeDefined();
     });
   });
@@ -493,7 +514,7 @@ describe('SubscriptionsController', () => {
         'path',
         SubscriptionsController.prototype.create
       );
-      expect(metadata).toBe('');
+      expect(metadata).toBe('/');
     });
 
     it('should have findAll endpoint as GET', () => {
@@ -501,7 +522,7 @@ describe('SubscriptionsController', () => {
         'path',
         SubscriptionsController.prototype.findAll
       );
-      expect(metadata).toBe('');
+      expect(metadata).toBe('/');
     });
 
     it('should have findOne endpoint as GET with :id', () => {

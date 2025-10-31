@@ -9,6 +9,6 @@
 export * from '@bills/testing';
 
 // Export service-specific mocks
-export * from './mock-prisma.service';
+export { createMockPrismaService } from './mock-prisma.service';
 export * from './service-mocks';
 

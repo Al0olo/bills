@@ -7,4 +7,7 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/libs/testing',
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid)/)',
+  ],
 };

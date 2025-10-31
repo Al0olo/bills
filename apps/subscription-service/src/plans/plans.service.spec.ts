@@ -2,9 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreatePlanDto } from './dto/create-plan.dto';
+import { CreatePlanDto, BillingCycle } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
-import { createTestPlan } from '../test-utils';
+import { createTestPlan, createMockPrismaService } from '../test-utils';
 
 describe('PlansService', () => {
   let service: PlansService;
@@ -15,7 +15,7 @@ describe('PlansService', () => {
     name: 'Basic Plan',
     description: 'Basic subscription plan',
     price: 9.99,
-    billingCycle: 'MONTHLY' as const,
+    billingCycle: BillingCycle.MONTHLY,
     features: ['Feature 1', 'Feature 2'],
     isActive: true,
     createdAt: new Date('2024-01-01'),
@@ -23,14 +23,7 @@ describe('PlansService', () => {
   };
 
   beforeEach(async () => {
-    const mockPrismaService = {
-      plan: {
-        create: jest.fn(),
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
-    };
+    const mockPrismaService = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,13 +48,13 @@ describe('PlansService', () => {
       name: 'Premium Plan',
       description: 'Premium subscription plan',
       price: 29.99,
-      billingCycle: 'MONTHLY',
+      billingCycle: BillingCycle.MONTHLY,
       features: ['Feature 1', 'Feature 2', 'Feature 3'],
     };
 
     it('should successfully create a new plan', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(null);
-      prismaService.plan.create.mockResolvedValue(mockPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.plan.create as jest.Mock).mockResolvedValue(mockPlan);
 
       const result = await service.create(createPlanDto);
 
@@ -92,11 +85,11 @@ describe('PlansService', () => {
         name: 'Basic Plan',
         description: 'Basic plan',
         price: 9.99,
-        billingCycle: 'MONTHLY',
+        billingCycle: BillingCycle.MONTHLY,
       };
 
-      prismaService.plan.findUnique.mockResolvedValue(null);
-      prismaService.plan.create.mockResolvedValue({
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.plan.create as jest.Mock).mockResolvedValue({
         ...mockPlan,
         features: [],
       });
@@ -112,7 +105,7 @@ describe('PlansService', () => {
     });
 
     it('should throw ConflictException if plan name already exists', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
 
       await expect(service.create(createPlanDto)).rejects.toThrow(
         ConflictException
@@ -128,7 +121,7 @@ describe('PlansService', () => {
     });
 
     it('should throw ConflictException with correct error code', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
 
       try {
         await service.create(createPlanDto);
@@ -139,8 +132,8 @@ describe('PlansService', () => {
     });
 
     it('should handle database errors during creation', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(null);
-      prismaService.plan.create.mockRejectedValue(
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.plan.create as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -152,20 +145,20 @@ describe('PlansService', () => {
     it('should create plan with YEARLY billing cycle', async () => {
       const yearlyPlanDto: CreatePlanDto = {
         ...createPlanDto,
-        billingCycle: 'YEARLY',
+        billingCycle: BillingCycle.YEARLY,
         price: 299.99,
       };
 
-      prismaService.plan.findUnique.mockResolvedValue(null);
-      prismaService.plan.create.mockResolvedValue({
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.plan.create as jest.Mock).mockResolvedValue({
         ...mockPlan,
-        billingCycle: 'YEARLY',
+        billingCycle: BillingCycle.YEARLY,
         price: 299.99,
       });
 
       const result = await service.create(yearlyPlanDto);
 
-      expect(result.billingCycle).toBe('YEARLY');
+      expect(result.billingCycle).toBe(BillingCycle.YEARLY);
       expect(result.price).toBe(299.99);
     });
   });
@@ -178,7 +171,7 @@ describe('PlansService', () => {
     ];
 
     it('should return all plans without filter', async () => {
-      prismaService.plan.findMany.mockResolvedValue(mockPlans);
+      (prismaService.plan.findMany as jest.Mock).mockResolvedValue(mockPlans);
 
       const result = await service.findAll();
 
@@ -194,7 +187,7 @@ describe('PlansService', () => {
 
     it('should filter plans by isActive=true', async () => {
       const activePlans = mockPlans.filter((p) => p.isActive);
-      prismaService.plan.findMany.mockResolvedValue(activePlans);
+      (prismaService.plan.findMany as jest.Mock).mockResolvedValue(activePlans);
 
       const result = await service.findAll(true);
 
@@ -210,7 +203,7 @@ describe('PlansService', () => {
 
     it('should filter plans by isActive=false', async () => {
       const inactivePlan = { ...mockPlan, isActive: false };
-      prismaService.plan.findMany.mockResolvedValue([inactivePlan]);
+      (prismaService.plan.findMany as jest.Mock).mockResolvedValue([inactivePlan]);
 
       const result = await service.findAll(false);
 
@@ -224,7 +217,7 @@ describe('PlansService', () => {
     });
 
     it('should return empty array if no plans exist', async () => {
-      prismaService.plan.findMany.mockResolvedValue([]);
+      (prismaService.plan.findMany as jest.Mock).mockResolvedValue([]);
 
       const result = await service.findAll();
 
@@ -232,7 +225,7 @@ describe('PlansService', () => {
     });
 
     it('should order plans by price ascending', async () => {
-      prismaService.plan.findMany.mockResolvedValue(mockPlans);
+      (prismaService.plan.findMany as jest.Mock).mockResolvedValue(mockPlans);
 
       await service.findAll();
 
@@ -248,7 +241,7 @@ describe('PlansService', () => {
         ...mockPlan,
         price: { toString: () => '9.99' }, // Prisma Decimal type
       };
-      prismaService.plan.findMany.mockResolvedValue([planWithDecimal as any]);
+      (prismaService.plan.findMany as jest.Mock).mockResolvedValue([planWithDecimal as any]);
 
       const result = await service.findAll();
 
@@ -259,7 +252,7 @@ describe('PlansService', () => {
 
   describe('findOne', () => {
     it('should return a plan by ID', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
 
       const result = await service.findOne(mockPlan.id);
 
@@ -280,7 +273,7 @@ describe('PlansService', () => {
     });
 
     it('should throw NotFoundException if plan does not exist', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(null);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.findOne('non-existent-id')
@@ -291,7 +284,7 @@ describe('PlansService', () => {
     });
 
     it('should throw NotFoundException with correct error code', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(null);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
 
       try {
         await service.findOne('non-existent-id');
@@ -302,7 +295,7 @@ describe('PlansService', () => {
     });
 
     it('should handle database errors', async () => {
-      prismaService.plan.findUnique.mockRejectedValue(
+      (prismaService.plan.findUnique as jest.Mock).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -321,9 +314,9 @@ describe('PlansService', () => {
     it('should successfully update a plan', async () => {
       const updatedPlan = { ...mockPlan, ...updatePlanDto };
       
-      prismaService.plan.findUnique.mockResolvedValueOnce(mockPlan);
-      prismaService.plan.findUnique.mockResolvedValueOnce(null); // Name check
-      prismaService.plan.update.mockResolvedValue(updatedPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValueOnce(mockPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValueOnce(null); // Name check
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(updatedPlan);
 
       const result = await service.update(mockPlan.id, updatePlanDto);
 
@@ -339,7 +332,7 @@ describe('PlansService', () => {
     });
 
     it('should throw NotFoundException if plan does not exist', async () => {
-      prismaService.plan.findUnique.mockResolvedValue(null);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.update('non-existent-id', updatePlanDto)
@@ -352,9 +345,11 @@ describe('PlansService', () => {
     it('should throw ConflictException if new name already exists', async () => {
       const conflictingPlan = { ...mockPlan, id: 'different-id' };
       
-      prismaService.plan.findUnique
-        .mockResolvedValueOnce(mockPlan) // Existing plan check
-        .mockResolvedValueOnce(conflictingPlan); // Name conflict check
+      (prismaService.plan.findUnique as jest.Mock)
+        .mockResolvedValueOnce(mockPlan) // Existing plan check (by id)
+        .mockResolvedValueOnce(conflictingPlan) // Name conflict check (by name)
+        .mockResolvedValueOnce(mockPlan) // Existing plan check (by id) - second call
+        .mockResolvedValueOnce(conflictingPlan); // Name conflict check (by name) - second call
 
       await expect(
         service.update(mockPlan.id, updatePlanDto)
@@ -368,8 +363,8 @@ describe('PlansService', () => {
       const dtoWithoutName: UpdatePlanDto = { price: 49.99 };
       const updatedPlan = { ...mockPlan, price: 49.99 };
       
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
-      prismaService.plan.update.mockResolvedValue(updatedPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(updatedPlan);
 
       const result = await service.update(mockPlan.id, dtoWithoutName);
 
@@ -381,8 +376,8 @@ describe('PlansService', () => {
       const dtoSameName: UpdatePlanDto = { name: mockPlan.name, price: 49.99 };
       const updatedPlan = { ...mockPlan, price: 49.99 };
       
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
-      prismaService.plan.update.mockResolvedValue(updatedPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(updatedPlan);
 
       const result = await service.update(mockPlan.id, dtoSameName);
 
@@ -397,8 +392,8 @@ describe('PlansService', () => {
       };
       const updatedPlan = { ...mockPlan, features: dtoWithFeatures.features };
       
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
-      prismaService.plan.update.mockResolvedValue(updatedPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(updatedPlan);
 
       const result = await service.update(mockPlan.id, dtoWithFeatures);
 
@@ -406,22 +401,22 @@ describe('PlansService', () => {
     });
 
     it('should update billing cycle', async () => {
-      const dtoWithCycle: UpdatePlanDto = { billingCycle: 'YEARLY' };
-      const updatedPlan = { ...mockPlan, billingCycle: 'YEARLY' as const };
+      const dtoWithCycle: UpdatePlanDto = { billingCycle: BillingCycle.YEARLY };
+      const updatedPlan = { ...mockPlan, billingCycle: BillingCycle.YEARLY };
       
-      prismaService.plan.findUnique.mockResolvedValue(mockPlan);
-      prismaService.plan.update.mockResolvedValue(updatedPlan);
+      (prismaService.plan.findUnique as jest.Mock).mockResolvedValue(mockPlan);
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(updatedPlan);
 
       const result = await service.update(mockPlan.id, dtoWithCycle);
 
-      expect(result.billingCycle).toBe('YEARLY');
+      expect(result.billingCycle).toBe(BillingCycle.YEARLY);
     });
   });
 
   describe('deactivate', () => {
     it('should successfully deactivate a plan', async () => {
       const deactivatedPlan = { ...mockPlan, isActive: false };
-      prismaService.plan.update.mockResolvedValue(deactivatedPlan);
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(deactivatedPlan);
 
       const result = await service.deactivate(mockPlan.id);
 
@@ -434,7 +429,7 @@ describe('PlansService', () => {
     });
 
     it('should handle non-existent plan gracefully', async () => {
-      prismaService.plan.update.mockRejectedValue(
+      (prismaService.plan.update as jest.Mock).mockRejectedValue(
         new Error('Record to update not found')
       );
 
@@ -443,7 +438,7 @@ describe('PlansService', () => {
 
     it('should preserve all other plan properties', async () => {
       const deactivatedPlan = { ...mockPlan, isActive: false };
-      prismaService.plan.update.mockResolvedValue(deactivatedPlan);
+      (prismaService.plan.update as jest.Mock).mockResolvedValue(deactivatedPlan);
 
       const result = await service.deactivate(mockPlan.id);
 

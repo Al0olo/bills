@@ -31,6 +31,9 @@ export default {
     '/dist/',
     '\\.e2e\\.spec\\.ts$',
   ],
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid)/)',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },

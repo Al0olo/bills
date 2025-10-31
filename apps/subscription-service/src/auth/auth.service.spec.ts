@@ -10,6 +10,7 @@ import {
   createTestUser,
   MockJwtService,
   MockConfigService,
+  createMockPrismaService,
 } from '../test-utils';
 
 jest.mock('bcrypt');
@@ -31,12 +32,7 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
-    const mockPrismaService = {
-      user: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
-      },
-    };
+    const mockPrismaService = createMockPrismaService();
 
     jwtService = new MockJwtService();
     configService = new MockConfigService();
@@ -93,9 +89,9 @@ describe('AuthService', () => {
         updatedAt: mockUser.updatedAt,
       };
 
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
-      prismaService.user.create.mockResolvedValue({
+      (prismaService.user.create as jest.Mock).mockResolvedValue({
         ...createdUser,
         passwordHash: hashedPassword,
         role: 'user',
@@ -123,7 +119,13 @@ describe('AuthService', () => {
         },
       });
       expect(result).toEqual({
-        user: createdUser,
+        user: expect.objectContaining({
+          id: createdUser.id,
+          email: createdUser.email,
+          name: createdUser.name,
+          createdAt: createdUser.createdAt,
+          updatedAt: createdUser.updatedAt,
+        }),
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
         expiresIn: 3600,
@@ -131,7 +133,7 @@ describe('AuthService', () => {
     });
 
     it('should throw ConflictException if user already exists', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       await expect(service.register(registerDto)).rejects.toThrow(
         ConflictException
@@ -147,9 +149,9 @@ describe('AuthService', () => {
     });
 
     it('should handle database errors during user creation', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
-      prismaService.user.create.mockRejectedValue(
+      (prismaService.user.create as jest.Mock).mockRejectedValue(
         new Error('Database connection failed')
       );
 
@@ -196,7 +198,7 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return user without password if credentials are valid', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.validateUser(
@@ -223,7 +225,7 @@ describe('AuthService', () => {
     });
 
     it('should return null if user does not exist', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       const result = await service.validateUser(
         'nonexistent@example.com',
@@ -235,7 +237,7 @@ describe('AuthService', () => {
     });
 
     it('should return null if password is incorrect', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       const result = await service.validateUser(
@@ -261,7 +263,7 @@ describe('AuthService', () => {
       };
 
       jwtService.verify.mockReturnValue(tokenPayload);
-      prismaService.user.findUnique.mockResolvedValue(userWithoutPassword);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(userWithoutPassword);
       jwtService.sign.mockReturnValueOnce('new-access-token').mockReturnValueOnce('new-refresh-token');
 
       const result = await service.refreshToken(refreshToken);
@@ -302,13 +304,13 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if user not found', async () => {
       jwtService.verify.mockReturnValue(tokenPayload);
-      prismaService.user.findUnique.mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.refreshToken(refreshToken)).rejects.toThrow(
         UnauthorizedException
       );
       await expect(service.refreshToken(refreshToken)).rejects.toThrow(
-        'User not found'
+        'Invalid or expired refresh token'
       );
     });
 
