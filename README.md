@@ -37,6 +37,8 @@ Comprehensive design documentation is available in the [`docs/`](./docs) directo
 
 **[API Design](./docs/api-design.md)** - Complete API specifications with examples and sequence diagrams
 
+**[Testing Guide](./docs/TESTING.md)** - Comprehensive testing documentation and best practices
+
 ---
 
 ## Architecture

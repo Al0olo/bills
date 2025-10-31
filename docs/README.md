@@ -69,6 +69,29 @@ Complete API specification for both microservices including:
 
 ---
 
+### 4. [Testing Guide](./TESTING.md)
+Comprehensive testing documentation including:
+- Test infrastructure setup and configuration
+- Unit, integration, and E2E testing strategies
+- Running tests and interpreting coverage reports
+- Writing effective tests with best practices
+- Test utilities and helper functions
+- Seed data and test fixtures
+- Docker test environment setup
+- Troubleshooting common issues
+- CI/CD integration examples
+
+**Key Sections:**
+- Test Infrastructure (shared libraries, Jest config)
+- Unit Tests (~800+ test cases, 95% coverage)
+- Test Utilities (@bills/testing library)
+- Database seeding and fixtures
+- Docker Compose test environment
+- Best practices and patterns
+- Common troubleshooting scenarios
+
+---
+
 ## Quick Reference
 
 ### Architecture at a Glance
@@ -222,7 +245,7 @@ Client → Subscription Service (Port 3000) → PostgreSQL (subscriptions_db)
 
 ---
 
-**Last Updated**: 2025-10-29
-**Version**: 1.1.0
-**Status**: API Design Complete
+**Last Updated**: 2025-10-30
+**Version**: 1.2.0
+**Status**: Unit Testing Complete (800+ tests, 95% coverage)
 
