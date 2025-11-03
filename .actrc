@@ -1,0 +1,5 @@
+# act configuration for local testing
+# Use medium-sized images for better compatibility
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+--container-architecture linux/amd64
+
