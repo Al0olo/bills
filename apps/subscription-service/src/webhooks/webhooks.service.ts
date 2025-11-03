@@ -60,7 +60,7 @@ export class WebhooksService {
         },
       });
 
-      // Update payment record status
+      // Update or create payment record
       const paymentRecord = await tx.paymentRecord.findFirst({
         where: {
           subscriptionId: subscription.id,
@@ -72,13 +72,26 @@ export class WebhooksService {
       });
 
       if (paymentRecord) {
+        // Update existing payment record
         await tx.paymentRecord.update({
           where: { id: paymentRecord.id },
           data: {
             status: status === 'success' ? 'SUCCESS' : 'FAILED',
             paymentGatewayId: paymentId,
             failureReason:
-              status === 'failed' ? 'Payment processing failed' : null,
+              status === 'failed' ? webhookDto.failureReason || 'Payment processing failed' : null,
+          },
+        });
+      } else {
+        // Create new payment record if none exists
+        await tx.paymentRecord.create({
+          data: {
+            subscriptionId: subscription.id,
+            amount: webhookDto.amount,
+            currency: webhookDto.currency,
+            status: status === 'success' ? 'SUCCESS' : 'FAILED',
+            paymentGatewayId: paymentId,
+            failureReason: status === 'failed' ? webhookDto.failureReason || 'Payment processing failed' : null,
           },
         });
       }

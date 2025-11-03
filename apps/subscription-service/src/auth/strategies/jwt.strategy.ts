@@ -32,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         id: true,
         email: true,
         name: true,
+        role: true, // Include role for authorization
         createdAt: true,
         updatedAt: true,
       },

@@ -41,6 +41,11 @@ export class PaymentWebhookDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  failureReason?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
 }

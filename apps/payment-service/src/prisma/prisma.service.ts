@@ -8,6 +8,26 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
+  constructor() {
+    super({
+      log: [
+        { emit: 'event', level: 'query' },
+        { emit: 'event', level: 'error' },
+        { emit: 'event', level: 'warn' },
+      ],
+    });
+    
+    // Verify DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    
+    // Log DATABASE_URL for debugging (masking password)
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET';
+    const maskedUrl = dbUrl.replace(/:[^:@]+@/, ':****@');
+    console.log('🔍 PrismaService (Payment) DATABASE_URL:', maskedUrl);
+  }
+
   async onModuleInit() {
     await this.$connect();
     this.logger.log('Successfully connected to database');

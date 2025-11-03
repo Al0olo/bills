@@ -78,22 +78,15 @@ export class PaymentsService {
   }
 
   /**
-   * Get payment by external reference
+   * Get all payments by external reference
    */
-  async getPaymentByReference(reference: string): Promise<PaymentResponseDto> {
-    const payment = await this.prisma.paymentTransaction.findFirst({
+  async getPaymentByReference(reference: string): Promise<PaymentResponseDto[]> {
+    const payments = await this.prisma.paymentTransaction.findMany({
       where: { externalReference: reference },
       orderBy: { createdAt: 'desc' },
     });
 
-    if (!payment) {
-      throw new NotFoundException({
-        message: 'Payment not found for reference',
-        code: 'PAYMENT_NOT_FOUND',
-      });
-    }
-
-    return this.mapToResponse(payment);
+    return payments.map(payment => this.mapToResponse(payment));
   }
 
   /**

@@ -2,6 +2,8 @@ export default {
   displayName: 'subscription-service',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/src/test-utils/jest-env-setup.ts'], // Load env vars BEFORE Jest
+  setupFilesAfterEnv: ['<rootDir>/src/test-utils/jest-setup.ts'], // Load Jest extensions AFTER Jest
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
@@ -30,7 +32,6 @@ export default {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
-    '\\.e2e\\.spec\\.ts$',
   ],
   transformIgnorePatterns: [
     'node_modules/(?!(uuid)/)',
@@ -38,7 +39,6 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  setupFilesAfterEnv: ['<rootDir>/src/test-utils/jest-setup.ts'],
   testMatch: [
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[tj]s?(x)',

@@ -7,6 +7,7 @@ import {
   UseInterceptors,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -79,28 +80,23 @@ export class PaymentsController {
     description: 'Payment not found',
     type: ErrorResponseDto,
   })
-  async getPayment(@Param('id') id: string): Promise<PaymentResponseDto> {
+  async getPayment(@Param('id', ParseUUIDPipe) id: string): Promise<PaymentResponseDto> {
     return this.paymentsService.getPayment(id);
   }
 
   @Get('reference/:reference')
   @ApiOperation({
-    summary: 'Get payment by external reference',
-    description: 'Retrieve payment details by external reference (e.g., subscription ID)',
+    summary: 'Get all payments by external reference',
+    description: 'Retrieve all payment details by external reference (e.g., subscription ID)',
   })
   @ApiResponse({
     status: 200,
     description: 'Payment details retrieved',
-    type: PaymentResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Payment not found',
-    type: ErrorResponseDto,
+    type: [PaymentResponseDto],
   })
   async getPaymentByReference(
     @Param('reference') reference: string
-  ): Promise<PaymentResponseDto> {
+  ): Promise<PaymentResponseDto[]> {
     return this.paymentsService.getPaymentByReference(reference);
   }
 }

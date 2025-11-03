@@ -94,7 +94,7 @@ describe('PlansController', () => {
 
       const result = await controller.findAll();
 
-      expect(plansService.findAll).toHaveBeenCalledWith(undefined);
+      expect(plansService.findAll).toHaveBeenCalledWith(true); // Defaults to true when undefined
       expect(result).toEqual(mockPlans);
       expect(result).toHaveLength(3);
     });
@@ -471,7 +471,7 @@ describe('PlansController', () => {
 
       await controller.findAll(undefined);
 
-      expect(plansService.findAll).toHaveBeenCalledWith(undefined);
+      expect(plansService.findAll).toHaveBeenCalledWith(true); // Defaults to true when undefined
     });
 
     it('should handle empty string isActive parameter', async () => {

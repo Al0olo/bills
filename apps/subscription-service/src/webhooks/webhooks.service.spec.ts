@@ -43,6 +43,7 @@ describe('WebhooksService', () => {
       paymentRecord: {
         findFirst: jest.fn(),
         update: jest.fn(),
+        create: jest.fn(),
       },
     };
 
@@ -232,6 +233,7 @@ describe('WebhooksService', () => {
       prismaService.subscription.findFirst.mockResolvedValue(mockSubscription);
       prismaService.subscription.update.mockResolvedValue(mockSubscription);
       prismaService.paymentRecord.findFirst.mockResolvedValue(null);
+      prismaService.paymentRecord.create.mockResolvedValue(mockPaymentRecord);
 
       await service.processPaymentWebhook(successWebhookDto);
 
@@ -249,12 +251,14 @@ describe('WebhooksService', () => {
         status: 'ACTIVE',
       });
       prismaService.paymentRecord.findFirst.mockResolvedValue(null);
+      prismaService.paymentRecord.create.mockResolvedValue(mockPaymentRecord);
 
       const result = await service.processPaymentWebhook(successWebhookDto);
 
       expect(result.received).toBe(true);
       expect(result.newStatus).toBe('ACTIVE');
       expect(prismaService.paymentRecord.update).not.toHaveBeenCalled();
+      expect(prismaService.paymentRecord.create).toHaveBeenCalled();
     });
 
     it('should find most recent pending payment record', async () => {
@@ -319,6 +323,7 @@ describe('WebhooksService', () => {
       prismaService.subscription.findFirst.mockResolvedValue(mockSubscription);
       prismaService.subscription.update.mockResolvedValue(mockSubscription);
       prismaService.paymentRecord.findFirst.mockResolvedValue(null);
+      prismaService.paymentRecord.create.mockResolvedValue(mockPaymentRecord);
 
       await service.processPaymentWebhook(successWebhookDto);
 

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNumber, IsNotEmpty, IsOptional, IsObject, Min } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsOptional, IsObject, Min, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class InitiatePaymentDto {
   @ApiProperty({
@@ -14,7 +15,7 @@ export class InitiatePaymentDto {
     description: 'Payment amount',
     example: 29.99,
   })
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   amount!: number;
 

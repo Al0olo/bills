@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   UseInterceptors,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,6 +23,8 @@ import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { PlanResponseDto } from './dto/plan-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor';
@@ -51,8 +54,9 @@ export class PlansController {
   async findAll(
     @Query('isActive') isActive?: string
   ): Promise<PlanResponseDto[]> {
+    // Default to showing only active plans if not specified
     const filter =
-      isActive !== undefined ? isActive === 'true' : undefined;
+      isActive !== undefined ? isActive === 'true' : true;
     return this.plansService.findAll(filter);
   }
 
@@ -69,12 +73,13 @@ export class PlansController {
     description: 'Plan not found',
     type: ErrorResponseDto,
   })
-  async findOne(@Param('id') id: string): Promise<PlanResponseDto> {
+  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<PlanResponseDto> {
     return this.plansService.findOne(id);
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @UseInterceptors(IdempotencyInterceptor)
   @Post()
   @ApiOperation({
@@ -101,7 +106,8 @@ export class PlansController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @UseInterceptors(IdempotencyInterceptor)
   @Patch(':id')
   @ApiOperation({
@@ -119,14 +125,15 @@ export class PlansController {
     type: ErrorResponseDto,
   })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePlanDto: UpdatePlanDto
   ): Promise<PlanResponseDto> {
     return this.plansService.update(id, updatePlanDto);
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @UseInterceptors(IdempotencyInterceptor)
   @Delete(':id')
   @ApiOperation({
@@ -143,7 +150,7 @@ export class PlansController {
     description: 'Plan not found',
     type: ErrorResponseDto,
   })
-  async deactivate(@Param('id') id: string): Promise<PlanResponseDto> {
+  async deactivate(@Param('id', ParseUUIDPipe) id: string): Promise<PlanResponseDto> {
     return this.plansService.deactivate(id);
   }
 }
