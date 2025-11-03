@@ -318,54 +318,45 @@ describe('PaymentsService', () => {
   describe('getPaymentByReference', () => {
     const reference = 'sub-123';
 
-    it('should successfully get payment by external reference', async () => {
-      prismaService.paymentTransaction.findFirst.mockResolvedValue(mockPayment);
+    it('should successfully get payments by external reference', async () => {
+      prismaService.paymentTransaction.findMany.mockResolvedValue([mockPayment]);
 
       const result = await service.getPaymentByReference(reference);
 
-      expect(prismaService.paymentTransaction.findFirst).toHaveBeenCalledWith({
+      expect(prismaService.paymentTransaction.findMany).toHaveBeenCalledWith({
         where: { externalReference: reference },
         orderBy: { createdAt: 'desc' },
       });
-      expect(result.externalReference).toBe(reference);
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0].externalReference).toBe(reference);
     });
 
-    it('should return most recent payment for reference', async () => {
-      prismaService.paymentTransaction.findFirst.mockResolvedValue(mockPayment);
+    it('should return all payments for reference ordered by most recent', async () => {
+      const payment2 = { ...mockPayment, id: 'pay-456', createdAt: new Date('2024-01-02') };
+      prismaService.paymentTransaction.findMany.mockResolvedValue([mockPayment, payment2]);
 
-      await service.getPaymentByReference(reference);
+      const result = await service.getPaymentByReference(reference);
 
-      expect(prismaService.paymentTransaction.findFirst).toHaveBeenCalledWith(
+      expect(prismaService.paymentTransaction.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { createdAt: 'desc' },
         })
       );
+      expect(result).toHaveLength(2);
     });
 
-    it('should throw NotFoundException if payment not found', async () => {
-      prismaService.paymentTransaction.findFirst.mockResolvedValue(null);
+    it('should return empty array if no payments found', async () => {
+      prismaService.paymentTransaction.findMany.mockResolvedValue([]);
 
-      await expect(service.getPaymentByReference(reference)).rejects.toThrow(
-        NotFoundException
-      );
-      await expect(service.getPaymentByReference(reference)).rejects.toThrow(
-        'Payment not found for reference'
-      );
-    });
+      const result = await service.getPaymentByReference(reference);
 
-    it('should throw NotFoundException with correct error code', async () => {
-      prismaService.paymentTransaction.findFirst.mockResolvedValue(null);
-
-      try {
-        await service.getPaymentByReference(reference);
-      } catch (error) {
-        expect(error).toBeInstanceOf(NotFoundException);
-        expect((error as any).response.code).toBe('PAYMENT_NOT_FOUND');
-      }
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(0);
     });
 
     it('should handle database errors', async () => {
-      prismaService.paymentTransaction.findFirst.mockRejectedValue(
+      prismaService.paymentTransaction.findMany.mockRejectedValue(
         new Error('Database error')
       );
 

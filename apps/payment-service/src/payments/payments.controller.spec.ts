@@ -311,9 +311,9 @@ describe('PaymentsController', () => {
       expect(controller.getPaymentByReference).toBeDefined();
     });
 
-    it('should successfully get payment by reference', async () => {
+    it('should successfully get payments by reference', async () => {
       paymentsService.getPaymentByReference.mockResolvedValue(
-        mockPaymentResponse
+        [mockPaymentResponse]
       );
 
       const result = await controller.getPaymentByReference(reference);
@@ -321,12 +321,14 @@ describe('PaymentsController', () => {
       expect(paymentsService.getPaymentByReference).toHaveBeenCalledWith(
         reference
       );
-      expect(result).toEqual(mockPaymentResponse);
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(mockPaymentResponse);
     });
 
     it('should pass reference to service', async () => {
       paymentsService.getPaymentByReference.mockResolvedValue(
-        mockPaymentResponse
+        [mockPaymentResponse]
       );
 
       await controller.getPaymentByReference(reference);
@@ -337,18 +339,19 @@ describe('PaymentsController', () => {
       expect(paymentsService.getPaymentByReference).toHaveBeenCalledTimes(1);
     });
 
-    it('should return payment matching the reference', async () => {
+    it('should return payments matching the reference', async () => {
       paymentsService.getPaymentByReference.mockResolvedValue(
-        mockPaymentResponse
+        [mockPaymentResponse]
       );
 
       const result = await controller.getPaymentByReference(reference);
 
-      expect(result.externalReference).toBe(reference);
+      expect(result).toBeInstanceOf(Array);
+      expect(result[0].externalReference).toBe(reference);
     });
 
-    it('should propagate NotFoundException from service', async () => {
-      const error = new Error('Payment not found for reference');
+    it('should propagate service errors', async () => {
+      const error = new Error('Database error');
       paymentsService.getPaymentByReference.mockRejectedValue(error);
 
       await expect(
@@ -361,30 +364,30 @@ describe('PaymentsController', () => {
 
       for (const ref of references) {
         const payment = { ...mockPaymentResponse, externalReference: ref };
-        paymentsService.getPaymentByReference.mockResolvedValue(payment);
+        paymentsService.getPaymentByReference.mockResolvedValue([payment]);
 
         const result = await controller.getPaymentByReference(ref);
-        expect(result.externalReference).toBe(ref);
+        expect(result[0].externalReference).toBe(ref);
       }
     });
 
     it('should handle special characters in reference', async () => {
       const specialRef = 'sub-123_test-2024';
       const payment = { ...mockPaymentResponse, externalReference: specialRef };
-      paymentsService.getPaymentByReference.mockResolvedValue(payment);
+      paymentsService.getPaymentByReference.mockResolvedValue([payment]);
 
       const result = await controller.getPaymentByReference(specialRef);
 
-      expect(result.externalReference).toBe(specialRef);
+      expect(result[0].externalReference).toBe(specialRef);
     });
 
-    it('should propagate service errors', async () => {
-      const error = new Error('Database error');
-      paymentsService.getPaymentByReference.mockRejectedValue(error);
+    it('should return empty array when no payments found', async () => {
+      paymentsService.getPaymentByReference.mockResolvedValue([]);
 
-      await expect(
-        controller.getPaymentByReference(reference)
-      ).rejects.toThrow(error);
+      const result = await controller.getPaymentByReference(reference);
+
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(0);
     });
   });
 
@@ -528,11 +531,12 @@ describe('PaymentsController', () => {
 
       // Lookup by reference
       paymentsService.getPaymentByReference.mockResolvedValue(
-        mockPaymentResponse
+        [mockPaymentResponse]
       );
       const found = await controller.getPaymentByReference('sub-123');
 
-      expect(found.externalReference).toBe('sub-123');
+      expect(found).toBeInstanceOf(Array);
+      expect(found[0].externalReference).toBe('sub-123');
     });
   });
 });
