@@ -1,5 +1,4 @@
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 
 /**
  * Test user credentials
@@ -151,18 +150,22 @@ export function getAdminAuthHeader(): { Authorization: string } {
 
 /**
  * Hash a password for testing (matches bcrypt used in app)
+ * Note: bcrypt is lazy-loaded to avoid native binding issues in unit tests
  */
 export async function hashPassword(password: string): Promise<string> {
+  const bcrypt = await import('bcrypt');
   return bcrypt.hash(password, 10);
 }
 
 /**
  * Verify a password against a hash
+ * Note: bcrypt is lazy-loaded to avoid native binding issues in unit tests
  */
 export async function verifyPassword(
   password: string,
   hash: string
 ): Promise<boolean> {
+  const bcrypt = await import('bcrypt');
   return bcrypt.compare(password, hash);
 }
 

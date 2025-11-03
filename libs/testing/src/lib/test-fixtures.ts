@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as bcrypt from 'bcrypt';
 
 /**
  * Factory function to create test user data
@@ -225,8 +224,10 @@ export function createMany<T>(
 
 /**
  * Generate test password hash
+ * Note: bcrypt is lazy-loaded to avoid native binding issues in unit tests
  */
 export async function generateTestPasswordHash(password = 'Test1234!'): Promise<string> {
+  const bcrypt = await import('bcrypt');
   return bcrypt.hash(password, 10);
 }
 
