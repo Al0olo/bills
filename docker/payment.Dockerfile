@@ -5,7 +5,12 @@ WORKDIR /app
 FROM base AS dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/payment-service/package.json ./apps/payment-service/
-COPY libs/*/package.json ./libs/*/
+COPY apps/payment-service/prisma ./apps/payment-service/prisma
+COPY apps/subscription-service/prisma ./apps/subscription-service/prisma
+COPY libs/testing/package.json ./libs/testing/
+COPY libs/shared-types/package.json ./libs/shared-types/
+COPY libs/shared-schemas/package.json ./libs/shared-schemas/
+COPY libs/common-utils/package.json ./libs/common-utils/
 
 RUN pnpm install --frozen-lockfile
 
